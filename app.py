@@ -170,24 +170,42 @@ with tab3:
 with tab4:
     st.subheader("Predict House Price")
 
-    user_inputs = []
+    st.markdown("Adjust the features to estimate house price.")
 
-    cols = st.columns(4)
+    col1, col2, col3, col4 = st.columns(4)
 
-    for i, feature in enumerate(dataset.feature_names):
-        col = cols[i % 4]
-        with col:
-            value = st.slider(
-                feature,
-                float(df[feature].min()),
-                float(df[feature].max()),
-                float(df[feature].mean())
-            )
-            user_inputs.append(value)
+    # Logical Ranges (based on dataset meaning)
+    MedInc = col1.slider("Median Income (10k USD)",
+                         0.5, 15.0, 3.5, 0.1,
+                         help="Median income in block group (in $10,000 units)")
 
-    user_inputs = np.array(user_inputs).reshape(1, -1)
-    user_inputs = sc.transform(user_inputs)
+    HouseAge = col2.slider("House Age (years)",
+                           1, 52, 20, 1)
 
-    prediction = model.predict(user_inputs)
+    AveRooms = col3.slider("Average Rooms",
+                           2.0, 15.0, 5.0, 0.1)
+
+    AveBedrms = col4.slider("Average Bedrooms",
+                            0.5, 5.0, 1.0, 0.1)
+
+    col5, col6, col7, col8 = st.columns(4)
+
+    Population = col5.slider("Population",
+                             100, 5000, 1000, 50)
+
+    AveOccup = col6.slider("Average Occupancy",
+                           1.0, 10.0, 3.0, 0.1)
+
+    Latitude = col7.slider("Latitude",
+                           32.0, 42.0, 34.0, 0.1)
+
+    Longitude = col8.slider("Longitude",
+                            -124.0, -114.0, -118.0, 0.1)
+
+    user_input = np.array([[MedInc, HouseAge, AveRooms, AveBedrms,
+                            Population, AveOccup, Latitude, Longitude]])
+
+    user_input_scaled = sc.transform(user_input)
+    prediction = model.predict(user_input_scaled)
 
     st.success(f"Predicted House Price: ${prediction[0]*100000:,.0f}")
