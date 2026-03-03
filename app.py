@@ -14,13 +14,13 @@ from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
 # PAGE CONFIG
 # =========================
 st.set_page_config(
-    page_title="California Housing Analyzer",
-    page_icon="🏠",
+    page_title="California Housing — Data Science Tool",
+    page_icon="📊",
     layout="wide"
 )
 
 # =========================
-# DARK PROFESSIONAL UI
+# PROFESSIONAL DARK UI
 # =========================
 st.markdown("""
 <style>
@@ -81,16 +81,12 @@ rmse = np.sqrt(mean_squared_error(y_test, y_pred))
 # =========================
 # HEADER
 # =========================
-st.title("🏠 California Housing Price Analyzer")
-st.caption("Multiple Linear Regression • Interactive Dashboard")
+st.title("📊 California Housing — Regression Analysis Tool")
+st.caption("Multiple Linear Regression | Analytical Dashboard")
 
 st.divider()
 
-# =========================
-# METRICS DISPLAY
-# =========================
 col1, col2, col3 = st.columns(3)
-
 col1.metric("R² Score", f"{r2:.3f}")
 col2.metric("MAE ($100k)", f"{mae:.3f}")
 col3.metric("RMSE ($100k)", f"{rmse:.3f}")
@@ -101,19 +97,20 @@ st.divider()
 # TABS
 # =========================
 tab1, tab2, tab3, tab4 = st.tabs(
-    ["📊 Overview", "📈 Predictions", "📉 Residuals", "🎛 Predict Price"]
+    ["📊 Data Overview", "📈 Model Insights", "📉 Diagnostics", "🎯 Predict & Explain"]
 )
 
 # =========================
-# TAB 1 — OVERVIEW
+# TAB 1 — DATA OVERVIEW
 # =========================
 with tab1:
-    st.subheader("Feature Correlation Heatmap")
+    st.subheader("Correlation Heatmap")
+
     fig1, ax1 = plt.subplots(figsize=(10, 6))
     sns.heatmap(df.corr(), cmap="viridis", ax=ax1)
     st.pyplot(fig1)
 
-    st.subheader("Feature Importance")
+    st.subheader("Feature Importance (Absolute Coefficient)")
 
     coef_df = pd.DataFrame({
         "Feature": dataset.feature_names,
@@ -129,14 +126,13 @@ with tab1:
         palette="magma",
         ax=ax2
     )
-    ax2.set_title("Feature Importance (Absolute Coefficient)")
     st.pyplot(fig2)
 
 # =========================
-# TAB 2 — PREDICTIONS
+# TAB 2 — MODEL INSIGHTS
 # =========================
 with tab2:
-    st.subheader("Actual vs Predicted Prices")
+    st.subheader("Actual vs Predicted")
 
     fig3, ax3 = plt.subplots()
     ax3.scatter(y_test, y_pred, alpha=0.4, color="#00FFAA")
@@ -150,7 +146,7 @@ with tab2:
     st.pyplot(fig3)
 
 # =========================
-# TAB 3 — RESIDUALS
+# TAB 3 — DIAGNOSTICS
 # =========================
 with tab3:
     residuals = y_test - y_pred
@@ -164,48 +160,66 @@ with tab3:
     ax4.set_ylabel("Residual")
     st.pyplot(fig4)
 
+    st.subheader("Residual Distribution")
+
+    fig5, ax5 = plt.subplots()
+    sns.histplot(residuals, kde=True, ax=ax5)
+    st.pyplot(fig5)
+
 # =========================
-# TAB 4 — INTERACTIVE PREDICTION
+# TAB 4 — PREDICT & EXPLAIN
 # =========================
 with tab4:
-    st.subheader("Predict House Price")
+    st.subheader("Interactive Prediction (Percentile-Based Ranges)")
 
-    st.markdown("Adjust the features to estimate house price.")
+    user_input = []
+    cols = st.columns(4)
 
-    col1, col2, col3, col4 = st.columns(4)
+    for i, feature in enumerate(dataset.feature_names):
+        col = cols[i % 4]
 
-    # Logical Ranges (based on dataset meaning)
-    MedInc = col1.slider("Median Income (10k USD)",
-                         0.5, 15.0, 3.5, 0.1,
-                         help="Median income in block group (in $10,000 units)")
+        lower = float(df[feature].quantile(0.05))
+        upper = float(df[feature].quantile(0.95))
+        median = float(df[feature].median())
 
-    HouseAge = col2.slider("House Age (years)",
-                           1, 52, 20, 1)
+        with col:
+            value = st.slider(
+                feature,
+                min_value=round(lower, 2),
+                max_value=round(upper, 2),
+                value=round(median, 2),
+                step=0.01
+            )
+            user_input.append(value)
 
-    AveRooms = col3.slider("Average Rooms",
-                           2.0, 15.0, 5.0, 0.1)
-
-    AveBedrms = col4.slider("Average Bedrooms",
-                            0.5, 5.0, 1.0, 0.1)
-
-    col5, col6, col7, col8 = st.columns(4)
-
-    Population = col5.slider("Population",
-                             100, 5000, 1000, 50)
-
-    AveOccup = col6.slider("Average Occupancy",
-                           1.0, 10.0, 3.0, 0.1)
-
-    Latitude = col7.slider("Latitude",
-                           32.0, 42.0, 34.0, 0.1)
-
-    Longitude = col8.slider("Longitude",
-                            -124.0, -114.0, -118.0, 0.1)
-
-    user_input = np.array([[MedInc, HouseAge, AveRooms, AveBedrms,
-                            Population, AveOccup, Latitude, Longitude]])
-
+    user_input = np.array(user_input).reshape(1, -1)
     user_input_scaled = sc.transform(user_input)
-    prediction = model.predict(user_input_scaled)
+
+    prediction = model.predict(user_input)
 
     st.success(f"Predicted House Price: ${prediction[0]*100000:,.0f}")
+
+    # =========================
+    # CONTRIBUTION ANALYSIS
+    # =========================
+    st.subheader("Feature Contribution Analysis")
+
+    coefs = model.coef_
+    scaled_values = user_input_scaled.flatten()
+
+    contributions = coefs * scaled_values
+
+    contrib_df = pd.DataFrame({
+        "Feature": dataset.feature_names,
+        "Contribution": contributions
+    }).sort_values(by="Contribution", key=abs, ascending=False)
+
+    fig6, ax6 = plt.subplots()
+    sns.barplot(
+        data=contrib_df,
+        x="Contribution",
+        y="Feature",
+        palette="coolwarm",
+        ax=ax6
+    )
+    st.pyplot(fig6)
