@@ -24,4 +24,4 @@ An interactive Machine Learning dashboard that predicts California house prices 
 ---
 
 ## 👨‍💻 Author
-**Chinmay V Chatradamath**
+**Chinmay V Chatradamath.**
